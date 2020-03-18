@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/jairsjunior/ssh-client/client"
-	"github.com/jairsjunior/ssh-client/util"
+	"github.com/jairsjunior/go-ssh-client-tunnel/client"
+	"github.com/jairsjunior/go-ssh-client-tunnel/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
