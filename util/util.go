@@ -30,8 +30,8 @@ func PublicKeyFile(file string) ssh.AuthMethod {
 func ConfigViper() {
 	viper.SetEnvPrefix("ssh")
 
-	viper.SetDefault("SERVER_HOST", "104.42.4.187")
-	viper.SetDefault("SERVER_PORT", "2432")
+	viper.SetDefault("SERVER_HOST", "localhost")
+	viper.SetDefault("SERVER_PORT", "2222")
 	viper.SetDefault("LOCAL_HOST", "localhost")
 	viper.SetDefault("LOCAL_PORT", "5000")
 	viper.SetDefault("REMOTE_HOST", "localhost")

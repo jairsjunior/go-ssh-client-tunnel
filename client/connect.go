@@ -89,7 +89,6 @@ func CreateConnectionRemote(user string, password string, localEndpoint Endpoint
 
 		handleClient(client, local)
 	}
-
 	return nil
 }
 
@@ -134,6 +133,5 @@ func CreateConnectionLocal(user string, password string, localEndpoint Endpoint,
 
 		handleClient(client, remote)
 	}
-
 	return nil
 }
