@@ -3,9 +3,9 @@ package client
 import (
 	"fmt"
 	"io"
-	"log"
 	"net"
 
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -28,7 +28,7 @@ func handleClient(client net.Conn, remote net.Conn) {
 	go func() {
 		_, err := io.Copy(client, remote)
 		if err != nil {
-			log.Println(fmt.Sprintf("error while copy remote->local: %s", err))
+			logrus.Tracef("error while copy remote->local: %s", err)
 		}
 		chDone <- true
 	}()
@@ -37,7 +37,7 @@ func handleClient(client net.Conn, remote net.Conn) {
 	go func() {
 		_, err := io.Copy(remote, client)
 		if err != nil {
-			log.Println(fmt.Sprintf("error while copy local->remote: %s", err))
+			logrus.Tracef("error while copy local->remote: %s", err)
 		}
 		chDone <- true
 	}()
@@ -46,7 +46,7 @@ func handleClient(client net.Conn, remote net.Conn) {
 }
 
 //CreateConnectionRemote create a -R ssh connection
-func CreateConnectionRemote(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint) {
+func CreateConnectionRemote(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint) error {
 	sshConfig := &ssh.ClientConfig{
 		// SSH connection username
 		User: user,
@@ -58,36 +58,43 @@ func CreateConnectionRemote(user string, password string, localEndpoint Endpoint
 
 	// Connect to SSH remote server using serverEndpoint
 	serverConn, err := ssh.Dial("tcp", serverEndpoint.String(), sshConfig)
+	defer serverConn.Close()
 	if err != nil {
-		log.Fatalln(fmt.Printf("Dial INTO remote server error: %s", err))
+		logrus.Fatalf("Dial INTO remote server error: %s", err)
+		return err
 	}
 
 	// Listen on remote server port
 	listener, err := serverConn.Listen("tcp", remoteEndpoint.String())
-	if err != nil {
-		log.Fatalln(fmt.Printf("Listen open port ON remote server error: %s", err))
-	}
 	defer listener.Close()
+	if err != nil {
+		logrus.Fatalf("Listen open port ON remote server error: %s", err)
+		return err
+	}
 
 	// handle incoming connections on reverse forwarded tunnel
 	for {
 		// Open a (local) connection to localEndpoint whose content will be forwarded so serverEndpoint
 		local, err := net.Dial("tcp", localEndpoint.String())
 		if err != nil {
-			log.Fatalln(fmt.Printf("Dial INTO local service error: %s", err))
+			logrus.Fatalf("Dial INTO local service error: %s", err)
+			return err
 		}
 
 		client, err := listener.Accept()
 		if err != nil {
-			log.Fatalln(err)
+			logrus.Fatal(err)
+			return err
 		}
 
 		handleClient(client, local)
 	}
+
+	return nil
 }
 
 //CreateConnectionLocal create a -L ssh connection
-func CreateConnectionLocal(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint) {
+func CreateConnectionLocal(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint) error {
 	sshConfig := &ssh.ClientConfig{
 		// SSH connection username
 		User: user,
@@ -99,28 +106,34 @@ func CreateConnectionLocal(user string, password string, localEndpoint Endpoint,
 
 	// Establish connection with SSH server
 	conn, err := ssh.Dial("tcp", serverEndpoint.String(), sshConfig)
-	if err != nil {
-		log.Fatalln(err)
-	}
 	defer conn.Close()
+	if err != nil {
+		logrus.Fatal(err)
+		return err
+	}
 
 	listener, err := net.Listen("tcp", localEndpoint.String())
-	if err != nil {
-		log.Fatalln(err)
-	}
 	defer listener.Close()
+	if err != nil {
+		logrus.Fatal(err)
+		return err
+	}
 
 	for {
 		remote, err := conn.Dial("tcp", remoteEndpoint.String())
 		if err != nil {
-			log.Fatalln(fmt.Printf("Dial INTO remote service error: %s", err))
+			logrus.Fatalf("Dial INTO remote service error: %s", err)
+			return err
 		}
 
 		client, err := listener.Accept()
 		if err != nil {
-			log.Fatalln(err)
+			logrus.Fatal(err)
+			return err
 		}
 
 		handleClient(client, remote)
 	}
+
+	return nil
 }
