@@ -37,11 +37,21 @@ func main() {
 
 	mode := viper.GetString("MODE")
 
+	logrus.Info("Local: " + localEndpoint.String())
+	logrus.Info("Remote: " + remoteEndpoint.String())
+	logrus.Info("Server: " + serverEndpoint.String())
+
 	if mode == "remote" {
 		logrus.Info("MODE: REMOTE")
-		client.CreateConnectionRemote(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
+		err := client.CreateConnectionRemote(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
+		if err != nil {
+			logrus.Fatalf("Error at REMOTE connection: %s", err)
+		}
 	} else if mode == "local" {
 		logrus.Info("MODE: LOCAL")
-		client.CreateConnectionLocal(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
+		err := client.CreateConnectionLocal(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
+		if err != nil {
+			logrus.Fatalf("Error at LOCAL connection: %s", err)
+		}
 	}
 }
