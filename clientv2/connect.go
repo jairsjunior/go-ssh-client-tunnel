@@ -23,15 +23,13 @@ func (endpoint *Endpoint) String() string {
 	return fmt.Sprintf("%s:%d", endpoint.Host, endpoint.Port)
 }
 
-func handleClientPipe(client net.Conn, remote net.Conn) error {
+func handleClientPipe(client net.Conn, remote net.Conn) {
 	defer client.Close()
 
-	err = bidipipe.Pipe(client, "client", remote, "remote")
+	err := bidipipe.Pipe(client, "client", remote, "remote")
 	if err != nil {
 		logrus.Infof(err.Error())
 	}
-
-	return nil
 }
 
 func handleClient(client net.Conn, remote net.Conn) {
