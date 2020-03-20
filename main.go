@@ -45,7 +45,7 @@ func main() {
 		logrus.Info("MODE: REMOTE")
 		for {
 			err := client.CreateConnectionRemoteV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
-			if err != nil {
+			if err == nil {
 				break
 			}
 		}
@@ -53,7 +53,7 @@ func main() {
 		logrus.Info("MODE: LOCAL")
 		for {
 			err := client.CreateConnectionLocalV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
-			if err != nil {
+			if err == nil {
 				break
 			}
 		}
