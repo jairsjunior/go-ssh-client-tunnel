@@ -23,14 +23,8 @@ func (endpoint *Endpoint) String() string {
 	return fmt.Sprintf("%s:%d", endpoint.Host, endpoint.Port)
 }
 
-func handleClientPipe(client net.Conn, conn *ssh.Client, dialAddress string) error {
+func handleClientPipe(client net.Conn, remote net.Conn) error {
 	defer client.Close()
-
-	remote, err := conn.Dial("tcp", dialAddress)
-	if err != nil {
-		logrus.Fatalf("Dial INTO remote service error: %s", err)
-		return err
-	}
 
 	err = bidipipe.Pipe(client, "client", remote, "remote")
 	if err != nil {
@@ -108,7 +102,13 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 			return err
 		}
 
-		go handleClientPipe(client, conn, localEndpoint.String())
+		local, err := conn.Dial("tcp", localEndpoint.String())
+		if err != nil {
+			logrus.Fatalf("Dial INTO remote service error: %s", err)
+			return err
+		}
+
+		go handleClientPipe(client, local)
 	}
 	logrus.Info("Exited for..")
 	return nil
@@ -156,7 +156,13 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 			return err
 		}
 
-		go handleClientPipe(client, conn, remoteEndpoint.String())
+		remote, err := conn.Dial("tcp", remoteEndpoint.String())
+		if err != nil {
+			logrus.Fatalf("Dial INTO remote service error: %s", err)
+			return err
+		}
+
+		go handleClientPipe(client, remote)
 	}
 	logrus.Info("Exited for..")
 	return nil
