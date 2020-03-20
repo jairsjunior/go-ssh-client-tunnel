@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/jairsjunior/go-ssh-client-tunnel/client"
+	client "github.com/jairsjunior/go-ssh-client-tunnel/clientv2"
 	"github.com/jairsjunior/go-ssh-client-tunnel/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -44,7 +44,7 @@ func main() {
 	if mode == "remote" {
 		logrus.Info("MODE: REMOTE")
 		for {
-			err := client.CreateConnectionRemote(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
+			err := client.CreateConnectionRemoteV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
 			if err != nil {
 				break
 			}
@@ -52,7 +52,7 @@ func main() {
 	} else if mode == "local" {
 		logrus.Info("MODE: LOCAL")
 		for {
-			err := client.CreateConnectionLocal(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
+			err := client.CreateConnectionLocalV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
 			if err != nil {
 				break
 			}
