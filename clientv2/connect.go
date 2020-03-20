@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"io"
 	"net"
 	"time"
 
@@ -28,33 +27,8 @@ func handleClientPipe(client net.Conn, remote net.Conn) {
 
 	err := bidipipe.Pipe(client, "client", remote, "remote")
 	if err != nil {
-		logrus.Infof(err.Error())
+		logrus.Debugf("Error at handling copy between clients: %s ", err.Error())
 	}
-}
-
-func handleClient(client net.Conn, remote net.Conn) {
-	defer client.Close()
-	chDone := make(chan bool)
-
-	// Start remote -> local data transfer
-	go func() {
-		_, err := io.Copy(client, remote)
-		if err != nil {
-			logrus.Tracef("error while copy remote->local: %s", err)
-		}
-		chDone <- true
-	}()
-
-	// Start local -> remote data transfer
-	go func() {
-		_, err := io.Copy(remote, client)
-		if err != nil {
-			logrus.Tracef("error while copy local->remote: %s", err)
-		}
-		chDone <- true
-	}()
-
-	<-chDone
 }
 
 //CreateConnectionRemoteV2 create a -R ssh connection
