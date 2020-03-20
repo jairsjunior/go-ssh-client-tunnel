@@ -100,7 +100,7 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 			return err
 		}
 
-		local, err := conn.Dial("tcp", localEndpoint.String())
+		local, err := net.Dial("tcp", localEndpoint.String())
 		if err != nil {
 			logrus.Fatalf("Dial INTO remote service error: %s", err)
 			return err
