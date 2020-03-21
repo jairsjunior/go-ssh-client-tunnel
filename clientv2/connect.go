@@ -105,10 +105,12 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 	connDialer, err := dialer.DialContext(context.Background(), "tcp", serverEndpoint.String())
 	if err != nil {
 		logrus.Error("Error at create dialer context")
+		return err
 	}
 	sconn, chans, reqs, err := ssh.NewClientConn(connDialer, serverEndpoint.String(), sshConfig)
 	if err != nil {
 		logrus.Error("Error at create new client conn")
+		return err
 	}
 	conn := ssh.NewClient(sconn, chans, reqs)
 	defer closeConn(conn)
