@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	client "github.com/jairsjunior/go-ssh-client-tunnel/clientv2"
 	"github.com/jairsjunior/go-ssh-client-tunnel/util"
 	"github.com/sirupsen/logrus"
@@ -47,6 +49,8 @@ func main() {
 			err := client.CreateConnectionRemoteV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
 			if err == nil {
 				break
+			} else {
+				os.Exit(9)
 			}
 		}
 	} else if mode == "local" {
@@ -55,6 +59,8 @@ func main() {
 			err := client.CreateConnectionLocalV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
 			if err == nil {
 				break
+			} else {
+				os.Exit(9)
 			}
 		}
 	}
