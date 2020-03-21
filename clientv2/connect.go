@@ -23,7 +23,7 @@ func (endpoint *Endpoint) String() string {
 }
 
 func handleClientPipe(client net.Conn, remote net.Conn) {
-	defer client.Close()
+	defer closeClient(client)
 
 	err := bidipipe.Pipe(client, "client", remote, "remote")
 	if err != nil {
@@ -60,7 +60,7 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 
 	// Listen on remote server port
 	listener, err := conn.Listen("tcp", remoteEndpoint.String())
-	defer listener.Close()
+	defer closeListener(listener)
 	if err != nil {
 		logrus.Fatalf("Listen open port ON remote server error: %s", err)
 		return err
@@ -111,11 +111,11 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 		logrus.Error("Error at create new client conn")
 	}
 	conn := ssh.NewClient(sconn, chans, reqs)
-	defer conn.Close()
+	defer closeConn(conn)
 	logrus.Info("Connection established with ssh server..")
 
 	listener, err := net.Listen("tcp", localEndpoint.String())
-	defer listener.Close()
+	defer closeListener(listener)
 	if err != nil {
 		logrus.Fatal(err)
 		return err
@@ -138,4 +138,23 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 	}
 	logrus.Info("Exited for..")
 	return nil
+}
+
+func closeClient(client net.Conn) {
+	defer recoveryFunction("closeClient()")
+	defer client.Close()
+}
+
+func closeListener(listener net.Listener) {
+	defer recoveryFunction("closeListener()")
+	defer listener.Close()
+}
+
+func closeConn(conn ssh.Conn) {
+	defer recoveryFunction("closeListener()")
+	defer conn.Close()
+}
+
+func recoveryFunction(rss string) {
+	logrus.Info("Error closing resources ... recovering from closing " + rss)
 }
