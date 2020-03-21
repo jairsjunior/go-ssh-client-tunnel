@@ -80,7 +80,8 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 			return err
 		}
 
-		handleClientPipe(client, local)
+		go handleClientPipe(client, local)
+		break
 	}
 	logrus.Info("Exited for..")
 	return nil
@@ -136,7 +137,8 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 			return err
 		}
 
-		handleClientPipe(client, remote)
+		go handleClientPipe(client, remote)
+		break
 	}
 	logrus.Info("Exited for..")
 	return nil

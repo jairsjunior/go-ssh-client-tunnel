@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"os/signal"
 
 	client "github.com/jairsjunior/go-ssh-client-tunnel/clientv2"
 	"github.com/jairsjunior/go-ssh-client-tunnel/util"
@@ -42,6 +43,18 @@ func main() {
 	logrus.Infof("Server: %s", serverEndpoint.String())
 	logrus.Infof("Local: %s", localEndpoint.String())
 	logrus.Infof("Remote: %s", remoteEndpoint.String())
+
+	// Trap SIGINT to trigger a shutdown.
+	signals := make(chan os.Signal, 2)
+	signal.Notify(signals, os.Interrupt, os.Kill)
+
+	go func() {
+		select {
+		case <-signals:
+			signal.Stop(signals)
+			logrus.Info("exiting gracefully...")
+		}
+	}()
 
 	if mode == "remote" {
 		logrus.Info("MODE: REMOTE")
