@@ -71,7 +71,7 @@ func main() {
 	} else if mode == "local" {
 		logrus.Info("MODE: LOCAL")
 		for {
-			err := client.CreateConnectionLocalV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
+			err := client.CreateConnectionLocalV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint, isConnected)
 			if err == nil {
 				break
 			} else {
