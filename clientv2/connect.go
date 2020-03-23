@@ -162,7 +162,7 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 
 		// go handleClientPipe(client, remote)
 
-		err = handleClientPipe(client, remote, isConnected)
+		go handleClientPipe(client, remote, isConnected)
 		// if err != nil {
 		// 	isConnected <- false
 		// 	return err
