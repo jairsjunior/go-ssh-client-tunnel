@@ -22,17 +22,19 @@ func (endpoint *Endpoint) String() string {
 	return fmt.Sprintf("%s:%d", endpoint.Host, endpoint.Port)
 }
 
-func handleClientPipe(client net.Conn, remote net.Conn) {
+func handleClientPipe(client net.Conn, remote net.Conn) error {
 	defer closeClient(client)
 
 	err := bidipipe.Pipe(client, "client", remote, "remote")
 	if err != nil {
 		logrus.Debugf("Error at handling copy between clients: %s ", err.Error())
 	}
+
+	return nil
 }
 
 //CreateConnectionRemoteV2 create a -R ssh connection
-func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint) error {
+func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint, isConnected chan bool) error {
 	sshConfig := &ssh.ClientConfig{
 		// SSH connection username
 		User: user,
@@ -80,7 +82,12 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 			return err
 		}
 
-		go handleClientPipe(client, local)
+		err = handleClientPipe(client, local)
+		if err != nil {
+			isConnected <- false
+		} else {
+			isConnected <- true
+		}
 		break
 	}
 	logrus.Info("Exited for..")
