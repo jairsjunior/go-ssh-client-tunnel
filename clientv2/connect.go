@@ -25,7 +25,10 @@ func (endpoint *Endpoint) String() string {
 func handleClientPipe(client net.Conn, remote net.Conn, isConnected chan bool) error {
 	defer closeClient(client)
 
+	logrus.Debug(">>>>>>>>>>>>>>>>>>>>>> before piping")
 	err := bidipipe.Pipe(client, "client", remote, "remote")
+	logrus.Debug(">>>>>>>>>>>>>>>>>>>>>> after piping")
+
 	if err != nil {
 		logrus.Debugf("Error at handling copy between clients: %s ", err.Error())
 		isConnected <- false
