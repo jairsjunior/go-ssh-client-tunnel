@@ -22,15 +22,17 @@ func (endpoint *Endpoint) String() string {
 	return fmt.Sprintf("%s:%d", endpoint.Host, endpoint.Port)
 }
 
-func handleClientPipe(client net.Conn, remote net.Conn) error {
+func handleClientPipe(client net.Conn, remote net.Conn, isConnected chan bool) error {
 	defer closeClient(client)
 
 	err := bidipipe.Pipe(client, "client", remote, "remote")
 	if err != nil {
 		logrus.Debugf("Error at handling copy between clients: %s ", err.Error())
+		isConnected <- false
 		return err
 	}
 
+	isConnected <- true
 	return nil
 }
 
@@ -90,12 +92,12 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 			return err
 		}
 
-		err = handleClientPipe(client, local)
-		if err != nil {
-			isConnected <- false
-			return err
-		}
-		isConnected <- true
+		go handleClientPipe(client, local, isConnected)
+		// if err != nil {
+		// 	isConnected <- false
+		// 	return err
+		// }
+		// isConnected <- true
 
 		break
 	}
@@ -160,12 +162,12 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 
 		// go handleClientPipe(client, remote)
 
-		err = handleClientPipe(client, remote)
-		if err != nil {
-			isConnected <- false
-			return err
-		}
-		isConnected <- true
+		err = handleClientPipe(client, remote, isConnected)
+		// if err != nil {
+		// 	isConnected <- false
+		// 	return err
+		// }
+		// isConnected <- true
 
 		break
 	}
