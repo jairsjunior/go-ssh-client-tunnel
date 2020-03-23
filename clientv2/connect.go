@@ -25,9 +25,9 @@ func (endpoint *Endpoint) String() string {
 func handleClientPipe(client net.Conn, remote net.Conn, isConnected chan bool) error {
 	defer closeClient(client)
 
-	logrus.Debug(">>>>>>>>>>>>>>>>>>>>>> before piping")
+	logrus.Info(">>>>>>>>>>>>>>>>>>>>>> before piping")
 	err := bidipipe.Pipe(client, "client", remote, "remote")
-	logrus.Debug(">>>>>>>>>>>>>>>>>>>>>> after piping")
+	logrus.Info(">>>>>>>>>>>>>>>>>>>>>> after piping")
 
 	if err != nil {
 		logrus.Debugf("Error at handling copy between clients: %s ", err.Error())
@@ -141,6 +141,7 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 	logrus.Info("Connection established with ssh server..")
 
 	listener, err := net.Listen("tcp", localEndpoint.String())
+	logrus.Info("AFTER LISTEN COMMAND..")
 	defer closeListener(listener)
 	if err != nil {
 		logrus.Fatal(err)
@@ -150,6 +151,7 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 
 	for {
 		client, err := listener.Accept()
+		logrus.Info("AFTER LISTENER ACCEPT")
 		if err != nil {
 			logrus.Fatal(err)
 			isConnected <- false
@@ -157,6 +159,7 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 		}
 
 		remote, err := conn.Dial("tcp", remoteEndpoint.String())
+		logrus.Info("AFTER CONN DIALING")
 		if err != nil {
 			logrus.Fatalf("Dial INTO remote service error: %s", err)
 			isConnected <- false
@@ -165,7 +168,9 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 
 		// go handleClientPipe(client, remote)
 
+		logrus.Info("]]]]]]]]]]]]]]]]]]]]]BEFORE HANDLING PIPE")
 		go handleClientPipe(client, remote, isConnected)
+		logrus.Info("]]]]]]]]]]]]]]]]]]]]]AFTER HANDLING PIPE")
 		// if err != nil {
 		// 	isConnected <- false
 		// 	return err
