@@ -28,6 +28,7 @@ func handleClientPipe(client net.Conn, remote net.Conn) error {
 	err := bidipipe.Pipe(client, "client", remote, "remote")
 	if err != nil {
 		logrus.Debugf("Error at handling copy between clients: %s ", err.Error())
+		return err
 	}
 
 	return nil
