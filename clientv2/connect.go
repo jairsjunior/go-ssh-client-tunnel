@@ -22,17 +22,21 @@ func (endpoint *Endpoint) String() string {
 	return fmt.Sprintf("%s:%d", endpoint.Host, endpoint.Port)
 }
 
-func handleClientPipe(client net.Conn, remote net.Conn) {
+func handleClientPipe(client net.Conn, remote net.Conn) error {
 	defer closeClient(client)
 
 	err := bidipipe.Pipe(client, "client", remote, "remote")
+
 	if err != nil {
 		logrus.Debugf("Error at handling copy between clients: %s ", err.Error())
+		return err
 	}
+
+	return nil
 }
 
 //CreateConnectionRemoteV2 create a -R ssh connection
-func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint) error {
+func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint, isConnected chan bool) error {
 	sshConfig := &ssh.ClientConfig{
 		// SSH connection username
 		User: user,
@@ -50,10 +54,14 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 	connDialer, err := dialer.DialContext(context.Background(), "tcp", serverEndpoint.String())
 	if err != nil {
 		logrus.Error("Error at create dialer context")
+		isConnected <- false
+		return err
 	}
 	sconn, chans, reqs, err := ssh.NewClientConn(connDialer, serverEndpoint.String(), sshConfig)
 	if err != nil {
 		logrus.Error("Error at create new client conn")
+		isConnected <- false
+		return err
 	}
 	conn := ssh.NewClient(sconn, chans, reqs)
 	logrus.Info("Connection established with ssh server..")
@@ -63,31 +71,42 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 	defer closeListener(listener)
 	if err != nil {
 		logrus.Fatalf("Listen open port ON remote server error: %s", err)
+		isConnected <- false
 		return err
 	}
+
+	isConnected <- true
 
 	// handle incoming connections on reverse forwarded tunnel
 	for {
 		client, err := listener.Accept()
 		if err != nil {
 			logrus.Fatal(err)
+			isConnected <- false
 			return err
 		}
 
 		local, err := net.Dial("tcp", localEndpoint.String())
 		if err != nil {
 			logrus.Fatalf("Dial INTO remote service error: %s", err)
+			isConnected <- false
 			return err
 		}
 
-		handleClientPipe(client, local)
+		err = handleClientPipe(client, local)
+		if err != nil {
+			isConnected <- false
+			return err
+		}
+
+		break
 	}
 	logrus.Info("Exited for..")
 	return nil
 }
 
 //CreateConnectionLocalV2 create a -L ssh connection
-func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint) error {
+func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint, isConnected chan bool) error {
 	sshConfig := &ssh.ClientConfig{
 		// SSH connection username
 		User: user,
@@ -105,11 +124,13 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 	connDialer, err := dialer.DialContext(context.Background(), "tcp", serverEndpoint.String())
 	if err != nil {
 		logrus.Error("Error at create dialer context")
+		isConnected <- false
 		return err
 	}
 	sconn, chans, reqs, err := ssh.NewClientConn(connDialer, serverEndpoint.String(), sshConfig)
 	if err != nil {
 		logrus.Error("Error at create new client conn")
+		isConnected <- false
 		return err
 	}
 	conn := ssh.NewClient(sconn, chans, reqs)
@@ -120,23 +141,37 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 	defer closeListener(listener)
 	if err != nil {
 		logrus.Fatal(err)
+		isConnected <- false
 		return err
 	}
 
+	isConnected <- true
+
 	for {
 		client, err := listener.Accept()
+
 		if err != nil {
 			logrus.Fatal(err)
+			isConnected <- false
 			return err
 		}
 
 		remote, err := conn.Dial("tcp", remoteEndpoint.String())
+
 		if err != nil {
 			logrus.Fatalf("Dial INTO remote service error: %s", err)
+			isConnected <- false
 			return err
 		}
 
-		handleClientPipe(client, remote)
+		err = handleClientPipe(client, remote)
+
+		if err != nil {
+			isConnected <- false
+			return err
+		}
+
+		break
 	}
 	logrus.Info("Exited for..")
 	return nil
