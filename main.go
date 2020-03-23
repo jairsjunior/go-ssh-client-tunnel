@@ -56,10 +56,12 @@ func main() {
 		}
 	}()
 
+	isConnected := make(chan bool)
+
 	if mode == "remote" {
 		logrus.Info("MODE: REMOTE")
 		for {
-			err := client.CreateConnectionRemoteV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
+			err := client.CreateConnectionRemoteV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint, isConnected)
 			if err == nil {
 				break
 			} else {

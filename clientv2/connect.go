@@ -95,7 +95,7 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 }
 
 //CreateConnectionLocalV2 create a -L ssh connection
-func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint) error {
+func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint, isConnected chan bool) error {
 	sshConfig := &ssh.ClientConfig{
 		// SSH connection username
 		User: user,
@@ -144,7 +144,15 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 			return err
 		}
 
-		go handleClientPipe(client, remote)
+		// go handleClientPipe(client, remote)
+
+		err = handleClientPipe(client, remote)
+		if err != nil {
+			isConnected <- false
+		} else {
+			isConnected <- true
+		}
+
 		break
 	}
 	logrus.Info("Exited for..")
