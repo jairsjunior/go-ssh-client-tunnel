@@ -149,12 +149,14 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 		return err
 	}
 
+	isConnected <- true
+
 	for {
 		client, err := listener.Accept()
 		logrus.Info("AFTER LISTENER ACCEPT")
 		if err != nil {
 			logrus.Fatal(err)
-			isConnected <- false
+			// isConnected <- false
 			return err
 		}
 
@@ -162,7 +164,7 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 		logrus.Info("AFTER CONN DIALING")
 		if err != nil {
 			logrus.Fatalf("Dial INTO remote service error: %s", err)
-			isConnected <- false
+			// isConnected <- false
 			return err
 		}
 
