@@ -53,10 +53,14 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 	connDialer, err := dialer.DialContext(context.Background(), "tcp", serverEndpoint.String())
 	if err != nil {
 		logrus.Error("Error at create dialer context")
+		isConnected <- false
+		return err
 	}
 	sconn, chans, reqs, err := ssh.NewClientConn(connDialer, serverEndpoint.String(), sshConfig)
 	if err != nil {
 		logrus.Error("Error at create new client conn")
+		isConnected <- false
+		return err
 	}
 	conn := ssh.NewClient(sconn, chans, reqs)
 	logrus.Info("Connection established with ssh server..")
@@ -66,6 +70,7 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 	defer closeListener(listener)
 	if err != nil {
 		logrus.Fatalf("Listen open port ON remote server error: %s", err)
+		isConnected <- false
 		return err
 	}
 
@@ -74,18 +79,21 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 		client, err := listener.Accept()
 		if err != nil {
 			logrus.Fatal(err)
+			isConnected <- false
 			return err
 		}
 
 		local, err := net.Dial("tcp", localEndpoint.String())
 		if err != nil {
 			logrus.Fatalf("Dial INTO remote service error: %s", err)
+			isConnected <- false
 			return err
 		}
 
 		err = handleClientPipe(client, local)
 		if err != nil {
 			isConnected <- false
+			return err
 		} else {
 			isConnected <- true
 		}
