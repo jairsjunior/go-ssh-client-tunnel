@@ -54,7 +54,11 @@ func main() {
 			}()
 			connected := <-isConnected
 			logrus.Infof("Connected: %s", connected)
-			connected = <-isConnected
+			if connected {
+				connected = <-isConnected
+			} else {
+				logrus.Info("Retry to connect..")
+			}
 		}
 	} else if mode == "local" {
 		logrus.Info("MODE: LOCAL")
@@ -67,7 +71,11 @@ func main() {
 			}()
 			connected := <-isConnected
 			logrus.Infof("Connected: %s", connected)
-			connected = <-isConnected
+			if connected {
+				connected = <-isConnected
+			} else {
+				logrus.Info("Retry to connect..")
+			}
 		}
 	}
 }
