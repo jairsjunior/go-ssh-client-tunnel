@@ -33,7 +33,7 @@ func handleClientPipe(client net.Conn, remote net.Conn) {
 }
 
 //CreateConnectionRemoteV2 create a -R ssh connection
-func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint) error {
+func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint, isConnected chan bool) error {
 	sshConfig := &ssh.ClientConfig{
 		// SSH connection username
 		User: user,
@@ -57,29 +57,31 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 		logrus.Error("Error at create new client conn")
 	}
 	conn := ssh.NewClient(sconn, chans, reqs)
-	defer closeConn(conn)
 	logrus.Info("Connection established with ssh server..")
 
 	// Listen on remote server port
 	listener, err := conn.Listen("tcp", remoteEndpoint.String())
-	listener.Close()
-	// defer closeListener(listener)
+	defer closeListener(listener)
 	if err != nil {
 		logrus.Errorf("Listen open port ON remote server error: %s", err)
 		return err
 	}
+
+	isConnected <- true
 
 	// handle incoming connections on reverse forwarded tunnel
 	for {
 		client, err := listener.Accept()
 		if err != nil {
 			logrus.Error(err)
+			isConnected <- false
 			return err
 		}
 
 		local, err := net.Dial("tcp", localEndpoint.String())
 		if err != nil {
 			logrus.Error("Dial INTO remote service error: %s", err)
+			isConnected <- false
 			return err
 		}
 
@@ -90,7 +92,7 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 }
 
 //CreateConnectionLocalV2 create a -L ssh connection
-func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint) error {
+func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint, isConnected chan bool) error {
 	sshConfig := &ssh.ClientConfig{
 		// SSH connection username
 		User: user,
@@ -117,27 +119,31 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 	}
 	conn := ssh.NewClient(sconn, chans, reqs)
 	defer conn.Close()
-	// defer closeConn(conn)
 	logrus.Info("Connection established with ssh server..")
+
+	isConnected <- true
 
 	listener, err := net.Listen("tcp", localEndpoint.String())
 	defer listener.Close()
 	// defer closeListener(listener)
 	if err != nil {
-		logrus.Fatal(err)
+		logrus.Error(err)
+		isConnected <- true
 		return err
 	}
 
 	for {
 		client, err := listener.Accept()
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Error(err)
+			isConnected <- true
 			return err
 		}
 
 		remote, err := conn.Dial("tcp", remoteEndpoint.String())
 		if err != nil {
-			logrus.Fatalf("Dial INTO remote service error: %s", err)
+			logrus.Errorf("Dial INTO remote service error: %s", err)
+			isConnected <- true
 			return err
 		}
 

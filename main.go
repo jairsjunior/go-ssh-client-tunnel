@@ -1,8 +1,6 @@
 package main
 
 import (
-	"os"
-
 	client "github.com/jairsjunior/go-ssh-client-tunnel/clientv2"
 	"github.com/jairsjunior/go-ssh-client-tunnel/util"
 	"github.com/sirupsen/logrus"
@@ -43,25 +41,33 @@ func main() {
 	logrus.Infof("Local: %s", localEndpoint.String())
 	logrus.Infof("Remote: %s", remoteEndpoint.String())
 
+	isConnected := make(chan bool)
+
 	if mode == "remote" {
 		logrus.Info("MODE: REMOTE")
 		for {
-			err := client.CreateConnectionRemoteV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
-			if err == nil {
-				break
-			} else {
-				os.Exit(9)
-			}
+			go func() {
+				err := client.CreateConnectionRemoteV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint, isConnected)
+				if err != nil {
+					return
+				}
+			}()
+			connected := <-isConnected
+			logrus.Infof("Connected: %s", connected)
+			connected = <-isConnected
 		}
 	} else if mode == "local" {
 		logrus.Info("MODE: LOCAL")
 		for {
-			err := client.CreateConnectionLocalV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint)
-			if err == nil {
-				break
-			} else {
-				os.Exit(9)
-			}
+			go func() {
+				err := client.CreateConnectionLocalV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint, isConnected)
+				if err != nil {
+					return
+				}
+			}()
+			connected := <-isConnected
+			logrus.Infof("Connected: %s", connected)
+			connected = <-isConnected
 		}
 	}
 }
