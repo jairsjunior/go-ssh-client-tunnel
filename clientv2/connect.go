@@ -57,13 +57,15 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 		logrus.Error("Error at create new client conn")
 	}
 	conn := ssh.NewClient(sconn, chans, reqs)
+	defer closeConn(conn)
 	logrus.Info("Connection established with ssh server..")
 
 	// Listen on remote server port
 	listener, err := conn.Listen("tcp", remoteEndpoint.String())
-	defer closeListener(listener)
+	listener.Close()
+	// defer closeListener(listener)
 	if err != nil {
-		logrus.Fatalf("Listen open port ON remote server error: %s", err)
+		logrus.Errorf("Listen open port ON remote server error: %s", err)
 		return err
 	}
 
@@ -71,13 +73,13 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 	for {
 		client, err := listener.Accept()
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Error(err)
 			return err
 		}
 
 		local, err := net.Dial("tcp", localEndpoint.String())
 		if err != nil {
-			logrus.Fatalf("Dial INTO remote service error: %s", err)
+			logrus.Error("Dial INTO remote service error: %s", err)
 			return err
 		}
 
