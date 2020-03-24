@@ -23,7 +23,8 @@ func (endpoint *Endpoint) String() string {
 }
 
 func handleClientPipe(client net.Conn, remote net.Conn) {
-	defer closeClient(client)
+	defer client.Close()
+	// defer closeClient(client)
 
 	err := bidipipe.Pipe(client, "client", remote, "remote")
 	if err != nil {
@@ -113,11 +114,13 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 		return err
 	}
 	conn := ssh.NewClient(sconn, chans, reqs)
-	defer closeConn(conn)
+	defer conn.Close()
+	// defer closeConn(conn)
 	logrus.Info("Connection established with ssh server..")
 
 	listener, err := net.Listen("tcp", localEndpoint.String())
-	defer closeListener(listener)
+	defer listener.Close()
+	// defer closeListener(listener)
 	if err != nil {
 		logrus.Fatal(err)
 		return err
