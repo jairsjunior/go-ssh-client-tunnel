@@ -23,8 +23,14 @@ func (endpoint *Endpoint) String() string {
 }
 
 func handleClientPipe(client net.Conn, remote net.Conn) {
+
+	defer func() {
+		if r := recover(); r != nil {
+			logrus.Errorf("Recovering from panic! error is: %v \n", r)
+		}
+	}()
+
 	defer client.Close()
-	// defer closeClient(client)
 
 	err := bidipipe.Pipe(client, "client", remote, "remote")
 	if err != nil {
@@ -34,6 +40,13 @@ func handleClientPipe(client net.Conn, remote net.Conn) {
 
 //CreateConnectionRemoteV2 create a -R ssh connection
 func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint, isConnected chan bool) error {
+
+	defer func() {
+		if r := recover(); r != nil {
+			logrus.Errorf("Recovering from panic! error is: %v \n", r)
+		}
+	}()
+
 	sshConfig := &ssh.ClientConfig{
 		// SSH connection username
 		User: user,
@@ -61,7 +74,7 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 
 	// Listen on remote server port
 	listener, err := conn.Listen("tcp", remoteEndpoint.String())
-	defer closeListener(listener)
+	defer listener.Close()
 	if err != nil {
 		logrus.Errorf("Listen open port ON remote server error: %s", err)
 		return err
@@ -80,7 +93,7 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 
 		local, err := net.Dial("tcp", localEndpoint.String())
 		if err != nil {
-			logrus.Error("Dial INTO remote service error: %s", err)
+			logrus.Errorf("Dial INTO remote service error: %s", err)
 			isConnected <- false
 			return err
 		}
@@ -93,6 +106,13 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 
 //CreateConnectionLocalV2 create a -L ssh connection
 func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint, isConnected chan bool) error {
+
+	defer func() {
+		if r := recover(); r != nil {
+			logrus.Errorf("Recovering from panic! error is: %v \n", r)
+		}
+	}()
+
 	sshConfig := &ssh.ClientConfig{
 		// SSH connection username
 		User: user,
@@ -125,7 +145,7 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 
 	listener, err := net.Listen("tcp", localEndpoint.String())
 	defer listener.Close()
-	// defer closeListener(listener)
+
 	if err != nil {
 		logrus.Error(err)
 		isConnected <- true
@@ -151,23 +171,4 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 	}
 	logrus.Info("Exited for..")
 	return nil
-}
-
-func closeClient(client net.Conn) {
-	defer recoveryFunction("closeClient()")
-	defer client.Close()
-}
-
-func closeListener(listener net.Listener) {
-	defer recoveryFunction("closeListener()")
-	defer listener.Close()
-}
-
-func closeConn(conn ssh.Conn) {
-	defer recoveryFunction("closeListener()")
-	defer conn.Close()
-}
-
-func recoveryFunction(rss string) {
-	logrus.Info("Error closing resources ... recovering from closing " + rss)
 }
