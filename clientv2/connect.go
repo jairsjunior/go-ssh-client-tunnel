@@ -34,10 +34,7 @@ func handleClientPipe(client net.Conn, remote net.Conn) {
 
 	if err != nil {
 		logrus.Debugf("Error at handling copy between clients: %s ", err.Error())
-		return err
 	}
-
-	return nil
 }
 
 //CreateConnectionRemoteV2 create a -R ssh connection
@@ -85,7 +82,6 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 		isConnected <- false
 		return err
 	}
-
 	isConnected <- true
 
 	// handle incoming connections on reverse forwarded tunnel
@@ -104,13 +100,7 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 			return err
 		}
 
-		err = handleClientPipe(client, local)
-		if err != nil {
-			isConnected <- false
-			return err
-		}
-
-		break
+		handleClientPipe(client, local)
 	}
 	logrus.Info("Exited for..")
 	return nil
@@ -118,13 +108,16 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 
 //CreateConnectionLocalV2 create a -L ssh connection
 func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint, isConnected chan bool) error {
+	var err error
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Errorf("Recovering from panic! error is: %v \n", r)
+			err = nil
 		}
 	}()
+	err = nil
 
-  sshConfig := &ssh.ClientConfig{
+	sshConfig := &ssh.ClientConfig{
 		// SSH connection username
 		User: user,
 		Auth: []ssh.AuthMethod{
@@ -158,21 +151,18 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 
 	listener, err := net.Listen("tcp", localEndpoint.String())
 	defer listener.Close()
-
 	if err != nil {
 		logrus.Error(err)
-		isConnected <- true
+		isConnected <- false
 		return err
 	}
-
-	isConnected <- true
 
 	for {
 		client, err := listener.Accept()
 
 		if err != nil {
 			logrus.Error(err)
-			isConnected <- true
+			isConnected <- false
 			return err
 		}
 
@@ -184,15 +174,8 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 			return err
 		}
 
-		err = handleClientPipe(client, remote)
-
-		if err != nil {
-			isConnected <- false
-			return err
-		}
-
-		break
+		handleClientPipe(client, remote)
 	}
 	logrus.Info("Exited for..")
-	return nil
+	return err
 }

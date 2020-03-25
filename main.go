@@ -49,11 +49,13 @@ func main() {
 			go func() {
 				err := client.CreateConnectionRemoteV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint, isConnected)
 				if err != nil {
+					logrus.Errorf("Connection error without panic: %v", err)
 					return
 				}
+				logrus.Errorf("Connection error with panic: %v", err)
 			}()
 			connected := <-isConnected
-			logrus.Infof("Connected: %s", connected)
+			logrus.Infof("Connected: %v", connected)
 			if connected {
 				connected = <-isConnected
 			} else {
@@ -66,11 +68,13 @@ func main() {
 			go func() {
 				err := client.CreateConnectionLocalV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint, isConnected)
 				if err != nil {
+					logrus.Infof("Connection error without panic: %v", err)
 					return
 				}
+				logrus.Infof("Connection error with panic: %v", err)
 			}()
 			connected := <-isConnected
-			logrus.Infof("Connected: %s", connected)
+			logrus.Infof("Connected: %v", connected)
 			if connected {
 				connected = <-isConnected
 			} else {
