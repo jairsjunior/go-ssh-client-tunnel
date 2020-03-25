@@ -22,8 +22,13 @@ func (endpoint *Endpoint) String() string {
 	return fmt.Sprintf("%s:%d", endpoint.Host, endpoint.Port)
 }
 
-func handleClientPipe(client net.Conn, remote net.Conn) error {
-	defer closeClient(client)
+func handleClientPipe(client net.Conn, remote net.Conn) {
+	defer func() {
+		if r := recover(); r != nil {
+			logrus.Errorf("Recovering from panic! error is: %v \n", r)
+		}
+	}()
+	defer client.Close()
 
 	err := bidipipe.Pipe(client, "client", remote, "remote")
 
@@ -37,6 +42,12 @@ func handleClientPipe(client net.Conn, remote net.Conn) error {
 
 //CreateConnectionRemoteV2 create a -R ssh connection
 func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint, isConnected chan bool) error {
+	defer func() {
+		if r := recover(); r != nil {
+			logrus.Errorf("Recovering from panic! error is: %v \n", r)
+		}
+	}()
+
 	sshConfig := &ssh.ClientConfig{
 		// SSH connection username
 		User: user,
@@ -68,9 +79,9 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 
 	// Listen on remote server port
 	listener, err := conn.Listen("tcp", remoteEndpoint.String())
-	defer closeListener(listener)
+	defer listener.Close()
 	if err != nil {
-		logrus.Fatalf("Listen open port ON remote server error: %s", err)
+		logrus.Errorf("Listen open port ON remote server error: %s", err)
 		isConnected <- false
 		return err
 	}
@@ -81,14 +92,14 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 	for {
 		client, err := listener.Accept()
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Error(err)
 			isConnected <- false
 			return err
 		}
 
 		local, err := net.Dial("tcp", localEndpoint.String())
 		if err != nil {
-			logrus.Fatalf("Dial INTO remote service error: %s", err)
+			logrus.Errorf("Dial INTO remote service error: %s", err)
 			isConnected <- false
 			return err
 		}
@@ -107,7 +118,13 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 
 //CreateConnectionLocalV2 create a -L ssh connection
 func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint, isConnected chan bool) error {
-	sshConfig := &ssh.ClientConfig{
+	defer func() {
+		if r := recover(); r != nil {
+			logrus.Errorf("Recovering from panic! error is: %v \n", r)
+		}
+	}()
+
+  sshConfig := &ssh.ClientConfig{
 		// SSH connection username
 		User: user,
 		Auth: []ssh.AuthMethod{
@@ -134,14 +151,17 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 		return err
 	}
 	conn := ssh.NewClient(sconn, chans, reqs)
-	defer closeConn(conn)
+	defer conn.Close()
 	logrus.Info("Connection established with ssh server..")
 
+	isConnected <- true
+
 	listener, err := net.Listen("tcp", localEndpoint.String())
-	defer closeListener(listener)
+	defer listener.Close()
+
 	if err != nil {
-		logrus.Fatal(err)
-		isConnected <- false
+		logrus.Error(err)
+		isConnected <- true
 		return err
 	}
 
@@ -151,15 +171,15 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 		client, err := listener.Accept()
 
 		if err != nil {
-			logrus.Fatal(err)
-			isConnected <- false
+			logrus.Error(err)
+			isConnected <- true
 			return err
 		}
 
 		remote, err := conn.Dial("tcp", remoteEndpoint.String())
 
 		if err != nil {
-			logrus.Fatalf("Dial INTO remote service error: %s", err)
+			logrus.Errorf("Dial INTO remote service error: %s", err)
 			isConnected <- false
 			return err
 		}
@@ -175,23 +195,4 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 	}
 	logrus.Info("Exited for..")
 	return nil
-}
-
-func closeClient(client net.Conn) {
-	defer recoveryFunction("closeClient()")
-	defer client.Close()
-}
-
-func closeListener(listener net.Listener) {
-	defer recoveryFunction("closeListener()")
-	defer listener.Close()
-}
-
-func closeConn(conn ssh.Conn) {
-	defer recoveryFunction("closeListener()")
-	defer conn.Close()
-}
-
-func recoveryFunction(rss string) {
-	logrus.Info("Error closing resources ... recovering from closing " + rss)
 }

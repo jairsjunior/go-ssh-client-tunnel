@@ -30,14 +30,14 @@ func PublicKeyFile(file string) ssh.AuthMethod {
 func ConfigViper() {
 	viper.SetEnvPrefix("ssh")
 
-	viper.SetDefault("SERVER_HOST", "localhost")
-	viper.SetDefault("SERVER_PORT", "2222")
+	viper.SetDefault("SERVER_HOST", "tunnel-convid.sandman.cloud")
+	viper.SetDefault("SERVER_PORT", "2432")
 	viper.SetDefault("LOCAL_HOST", "localhost")
 	viper.SetDefault("LOCAL_PORT", "5000")
 	viper.SetDefault("REMOTE_HOST", "localhost")
-	viper.SetDefault("REMOTE_PORT", "8080")
-	viper.SetDefault("USER", "convid19")
-	viper.SetDefault("PASSWORD", "c0nv1d19")
+	viper.SetDefault("REMOTE_PORT", "11290")
+	viper.SetDefault("USER", "MZL2321")
+	viper.SetDefault("PASSWORD", "13199857000124")
 
 	viper.SetDefault("MODE", "local")
 

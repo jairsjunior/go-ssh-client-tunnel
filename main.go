@@ -1,9 +1,6 @@
 package main
 
 import (
-	"os"
-	"os/signal"
-
 	client "github.com/jairsjunior/go-ssh-client-tunnel/clientv2"
 	"github.com/jairsjunior/go-ssh-client-tunnel/util"
 	"github.com/sirupsen/logrus"
@@ -44,38 +41,40 @@ func main() {
 	logrus.Infof("Local: %s", localEndpoint.String())
 	logrus.Infof("Remote: %s", remoteEndpoint.String())
 
-	// Trap SIGINT to trigger a shutdown.
-	signals := make(chan os.Signal, 2)
-	signal.Notify(signals, os.Interrupt, os.Kill)
-
-	go func() {
-		select {
-		case <-signals:
-			signal.Stop(signals)
-			logrus.Info("exiting gracefully...")
-		}
-	}()
-
 	isConnected := make(chan bool)
 
 	if mode == "remote" {
 		logrus.Info("MODE: REMOTE")
 		for {
-			err := client.CreateConnectionRemoteV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint, isConnected)
-			if err == nil {
-				break
+			go func() {
+				err := client.CreateConnectionRemoteV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint, isConnected)
+				if err != nil {
+					return
+				}
+			}()
+			connected := <-isConnected
+			logrus.Infof("Connected: %s", connected)
+			if connected {
+				connected = <-isConnected
 			} else {
-				os.Exit(9)
+				logrus.Info("Retry to connect..")
 			}
 		}
 	} else if mode == "local" {
 		logrus.Info("MODE: LOCAL")
 		for {
-			err := client.CreateConnectionLocalV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint, isConnected)
-			if err == nil {
-				break
+			go func() {
+				err := client.CreateConnectionLocalV2(user, password, localEndpoint, remoteEndpoint, serverEndpoint, isConnected)
+				if err != nil {
+					return
+				}
+			}()
+			connected := <-isConnected
+			logrus.Infof("Connected: %s", connected)
+			if connected {
+				connected = <-isConnected
 			} else {
-				os.Exit(9)
+				logrus.Info("Retry to connect..")
 			}
 		}
 	}
