@@ -23,24 +23,25 @@ func (endpoint *Endpoint) String() string {
 }
 
 func handleClientPipe(client net.Conn, remote net.Conn) {
-
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Errorf("Recovering from panic! error is: %v \n", r)
 		}
 	}()
-
 	defer client.Close()
 
 	err := bidipipe.Pipe(client, "client", remote, "remote")
+
 	if err != nil {
 		logrus.Debugf("Error at handling copy between clients: %s ", err.Error())
+		return err
 	}
+
+	return nil
 }
 
 //CreateConnectionRemoteV2 create a -R ssh connection
 func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint, isConnected chan bool) error {
-
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Errorf("Recovering from panic! error is: %v \n", r)
@@ -64,10 +65,14 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 	connDialer, err := dialer.DialContext(context.Background(), "tcp", serverEndpoint.String())
 	if err != nil {
 		logrus.Error("Error at create dialer context")
+		isConnected <- false
+		return err
 	}
 	sconn, chans, reqs, err := ssh.NewClientConn(connDialer, serverEndpoint.String(), sshConfig)
 	if err != nil {
 		logrus.Error("Error at create new client conn")
+		isConnected <- false
+		return err
 	}
 	conn := ssh.NewClient(sconn, chans, reqs)
 	logrus.Info("Connection established with ssh server..")
@@ -77,6 +82,7 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 	defer listener.Close()
 	if err != nil {
 		logrus.Errorf("Listen open port ON remote server error: %s", err)
+		isConnected <- false
 		return err
 	}
 
@@ -98,7 +104,13 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 			return err
 		}
 
-		handleClientPipe(client, local)
+		err = handleClientPipe(client, local)
+		if err != nil {
+			isConnected <- false
+			return err
+		}
+
+		break
 	}
 	logrus.Info("Exited for..")
 	return nil
@@ -106,14 +118,13 @@ func CreateConnectionRemoteV2(user string, password string, localEndpoint Endpoi
 
 //CreateConnectionLocalV2 create a -L ssh connection
 func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoint, remoteEndpoint Endpoint, serverEndpoint Endpoint, isConnected chan bool) error {
-
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Errorf("Recovering from panic! error is: %v \n", r)
 		}
 	}()
 
-	sshConfig := &ssh.ClientConfig{
+  sshConfig := &ssh.ClientConfig{
 		// SSH connection username
 		User: user,
 		Auth: []ssh.AuthMethod{
@@ -130,11 +141,13 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 	connDialer, err := dialer.DialContext(context.Background(), "tcp", serverEndpoint.String())
 	if err != nil {
 		logrus.Error("Error at create dialer context")
+		isConnected <- false
 		return err
 	}
 	sconn, chans, reqs, err := ssh.NewClientConn(connDialer, serverEndpoint.String(), sshConfig)
 	if err != nil {
 		logrus.Error("Error at create new client conn")
+		isConnected <- false
 		return err
 	}
 	conn := ssh.NewClient(sconn, chans, reqs)
@@ -152,8 +165,11 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 		return err
 	}
 
+	isConnected <- true
+
 	for {
 		client, err := listener.Accept()
+
 		if err != nil {
 			logrus.Error(err)
 			isConnected <- true
@@ -161,13 +177,21 @@ func CreateConnectionLocalV2(user string, password string, localEndpoint Endpoin
 		}
 
 		remote, err := conn.Dial("tcp", remoteEndpoint.String())
+
 		if err != nil {
 			logrus.Errorf("Dial INTO remote service error: %s", err)
-			isConnected <- true
+			isConnected <- false
 			return err
 		}
 
-		handleClientPipe(client, remote)
+		err = handleClientPipe(client, remote)
+
+		if err != nil {
+			isConnected <- false
+			return err
+		}
+
+		break
 	}
 	logrus.Info("Exited for..")
 	return nil
